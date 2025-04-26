@@ -1,7 +1,7 @@
 mod httpreq;
 mod query;
 
-use crate::httpreq::{catalogs, clients, imo, parts_by_cat, serials_by_cat, target_place, targets};
+use crate::httpreq::{add_draft, catalogs, clients, imo, parts_by_cat, requests_by_orderid, requests_by_statuses, serials_by_cat, target_place, targets};
 use crate::query::asyncdb::AsyncDB;
 use axum::Router;
 use axum::http::{HeaderValue, Method};
@@ -14,6 +14,7 @@ use tower_http::cors::{Any, CorsLayer};
 #[derive(Clone)]
 pub struct AppState {
     pub db: AsyncDB,
+   
 }
 #[tokio::main]
 async fn main() {
@@ -31,7 +32,10 @@ async fn main() {
         .route("/targets/serials/{a}/{b}/{c}", get(serials_by_cat))
         .route("/targets/pbc/{a}/{b}", get(parts_by_cat))
         .route("/targets/place/{a}/{b}", get(target_place))
-        
+
+        .route("/adddraft", post(add_draft))
+        .route("/reqbystatus/{a}", get(requests_by_statuses))
+        .route("/reqbyorderid/{a}", get(requests_by_orderid))
         
         .layer(CorsLayer::permissive())
         .with_state(state);

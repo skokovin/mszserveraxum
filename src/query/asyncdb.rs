@@ -2,7 +2,7 @@
 
 use bson::{doc, Bson, Document};
 use log::warn;
-use mongodb::{Client, Collection, Database};
+use mongodb::{Client, Collection, Cursor, Database};
 use mongodb::options::ClientOptions;
 use serde::{Deserialize, Serialize};
 use tokio_stream::StreamExt;
@@ -13,6 +13,8 @@ pub struct AsyncDB {
     client: Client,
     db: Database,
     reqitems_collection: Collection<ReqItem>,
+    active_zip_requests_collection: Collection<ReqItem>,
+    
 }
 impl AsyncDB {
     pub async fn new() -> Self {
@@ -21,10 +23,12 @@ impl AsyncDB {
         let client:Client = Client::with_options(client_options).unwrap();
         let db = client.database("local");
         let reqitems_collection: Collection<ReqItem> = db.collection::<ReqItem>("items2");
+        let active_zip_requests_collection: Collection<ReqItem> = db.collection::<ReqItem>("active_zip_requests");
         Self {
             client: client,
             db: db,
             reqitems_collection: reqitems_collection,
+            active_zip_requests_collection:active_zip_requests_collection,
         }
     }
     
@@ -32,7 +36,6 @@ impl AsyncDB {
         let res: Vec<Bson> = self.reqitems_collection.distinct("target", Document::default()).await.unwrap();
         let mut targets: Vec<String> = Vec::new();
         res.iter().for_each(|b| {
-            warn!("b: {:?}", b);
             targets.push(b.as_str().unwrap().to_string());
         });
         targets
@@ -42,7 +45,6 @@ impl AsyncDB {
         let res: Vec<Bson> = self.reqitems_collection.distinct("client_name", Document::default()).await.unwrap();
         let mut targets: Vec<String> = Vec::new();
         res.iter().for_each(|b| {
-            warn!("b: {:?}", b);
             targets.push(b.as_str().unwrap().to_string());
         });
         targets
@@ -151,7 +153,7 @@ impl AsyncDB {
                 ret.push((serials));
             }
         }
-        ret.iter().for_each(|(a)| { println!("{}", a); });
+        //ret.iter().for_each(|(a)| { println!("{}", a); });
         ret
     }
 
@@ -163,6 +165,94 @@ impl AsyncDB {
             rets.push(b.as_str().unwrap().to_string());
         });
         rets
+    }
+    
+    pub async fn q_add_drafts(&self,drafts:Vec<ReqItem>)  {
+       let ret= self.active_zip_requests_collection.insert_many(drafts).await;
+        match ret {
+            Ok(k) => {warn!("q_add_drafts ok: {:?}", k);}
+            Err(e) => {warn!("q_add_drafts: {:?}", e);}
+        }
+    }
+
+
+    pub async fn q_requests_by_status(&self, status:&i32) -> Vec<(String, String, String, i32)> {
+        let pipeline = vec![
+            doc! {"$match": {"status": status}},
+            doc!  {"$group": { "_id": {"request_day" :  "$request_day","request_month" : "$request_month","request_year" : "$request_year", "client_name": "$client_name","request_id": "$request_id"},"count": { "$sum": 1 } } },
+            doc!  {"$project":{"_id":0, "request_id": "$_id.request_id" , "request_day": "$_id.request_day", "request_month": "$_id.request_month", "request_year": "$_id.request_year", "client_name": "$_id.client_name","count": "$count"}},
+            doc! {"$sort": {"id": 1}},
+        ];
+
+        let mut results=self.active_zip_requests_collection.aggregate(pipeline).await.unwrap();
+        let mut ret:Vec<(String, String, String, i32)>=vec![];
+        while let Some(result) = results.next().await {
+            let mut id:String="".to_owned();
+            let mut client_name:String="".to_owned();
+            let mut request_id:String="".to_owned();
+            let mut count:i32=0;
+            match result {
+                Ok(doc) => {
+                    warn!("{:?}", doc);
+                    
+                    match  doc.get("request_day") {
+                        None => {}
+                        Some(d) => {
+                            id=d.as_i32().unwrap_or(0).to_string();
+                        }
+                    }
+                    match  doc.get("request_month") {
+                        None => {}
+                        Some(d) => {
+                            id=id+" "+d.as_i32().unwrap_or(0).to_string().as_str();
+                        }
+                    }
+                    match  doc.get("request_year") {
+                        None => {}
+                        Some(d) => {
+                            id=id+" "+d.as_i32().unwrap_or(0).to_string().as_str();
+                        }
+                    }
+                    match  doc.get("client_name") {
+                        None => {}
+                        Some(d) => {
+                            client_name=d.as_str().unwrap_or("").to_owned();
+                        }
+                    }
+                    match  doc.get("request_id") {
+                        None => {}
+                        Some(d) => {
+                            request_id=d.as_str().unwrap_or("").to_owned();
+                        }
+                    }
+                    match  doc.get("count") {
+                        None => {}
+                        Some(d) => {
+                            count=d.as_i32().unwrap_or(0);
+                        }
+                    }
+                }
+                Err(e) => {}
+            }
+         
+            ret.push((id,client_name,request_id,count));
+        }
+        ret
+    }
+
+    pub async fn q_requests_by_orderid(&self, orderid:String) -> Vec<ReqItem> {
+        //let mut results: Cursor<ReqItem> =self.active_zip_requests_collection.find(doc! {"request_id" : orderid}).sort( doc! {"$sort": {"part_no": 1}}).await.unwrap();
+        let mut results: Cursor<ReqItem> =self.active_zip_requests_collection.find(doc! {"request_id" : orderid}).await.unwrap();
+        let mut ret:Vec<ReqItem>=vec![];
+        while let Some(result) = results.next().await {
+            match result {
+                Ok(doc) => {
+                    ret.push(doc);
+                }
+                Err(e) => {}
+            }
+        }
+        ret
     }
     
 }
