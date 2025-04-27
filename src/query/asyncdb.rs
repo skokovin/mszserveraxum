@@ -241,8 +241,8 @@ impl AsyncDB {
     }
 
     pub async fn q_requests_by_orderid(&self, orderid:String) -> Vec<ReqItem> {
-        //let mut results: Cursor<ReqItem> =self.active_zip_requests_collection.find(doc! {"request_id" : orderid}).sort( doc! {"$sort": {"part_no": 1}}).await.unwrap();
-        let mut results: Cursor<ReqItem> =self.active_zip_requests_collection.find(doc! {"request_id" : orderid}).await.unwrap();
+        let mut results: Cursor<ReqItem> =self.active_zip_requests_collection.find(doc! {"request_id" : orderid}).sort( doc! {"part_no": 1}).await.unwrap();
+        //let mut results: Cursor<ReqItem> =self.active_zip_requests_collection.find(doc! {"request_id" : orderid}).await.unwrap();
         let mut ret:Vec<ReqItem>=vec![];
         while let Some(result) = results.next().await {
             match result {
