@@ -16,7 +16,7 @@ pub struct AsyncDB {
 }
 impl AsyncDB {
     pub async fn new() -> Self {
-        //let cs="mongodb://localhost:27017";
+        let cs="mongodb://localhost:27017";
 /*        
 https://ruvds.com/ru/helpcenter/kak-ustanovit-mongodb-na-ubuntu/
 https://ruvds.com/ru/helpcenter/mongodb-security-ubuntu-20-04/
@@ -33,7 +33,7 @@ db.createUser(
             }
         )*/
 
-        let cs="mongodb://superadmin:ssww%40%4031@185.91.52.4:27017/?retryWrites=true&loadBalanced=false&serverSelectionTimeoutMS=5000&connectTimeoutMS=10000&authSource=admin&authMechanism=SCRAM-SHA-256";
+        //let cs="mongodb://superadmin:ssww%40%4031@185.91.52.4:27017/?retryWrites=true&loadBalanced=false&serverSelectionTimeoutMS=5000&connectTimeoutMS=10000&authSource=admin&authMechanism=SCRAM-SHA-256";
         
         let client_options = ClientOptions::parse(cs)
             .await
