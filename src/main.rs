@@ -1,7 +1,7 @@
 mod httpreq;
 mod query;
 
-use crate::httpreq::{add_draft, catalogs, clients, imo, parts_by_cat, requests_by_orderid, requests_by_statuses, serials_by_cat, target_place, targets};
+use crate::httpreq::{accept_summ_price, add_draft, catalogs, change_status, clients, create_contract, create_post_processes, create_supp_contract, create_supp_delivery, create_supp_payments, imo, parts_by_cat, requests_by_orderid, requests_by_orderid_status, requests_by_statuses, requests_supplyers_by_orderid, serials_by_cat, target_place, targets, update_summ_price, update_supplier, update_supplier_price};
 use crate::query::asyncdb::AsyncDB;
 use axum::Router;
 use axum::http::{HeaderValue, Method};
@@ -33,13 +33,28 @@ async fn main() {
         .route("/targets/pbc/{a}/{b}", get(parts_by_cat))
         .route("/targets/place/{a}/{b}", get(target_place))
 
-        .route("/adddraft", post(add_draft))
+       
         .route("/reqbystatus/{a}", get(requests_by_statuses))
         .route("/reqbyorderid/{a}", get(requests_by_orderid))
+        .route("/reqbyorderidstatus/{a}/{b}", get(requests_by_orderid_status))
+        .route("/reqsuppbyorderid/{a}", get(requests_supplyers_by_orderid))
+
+        .route("/adddraft", post(add_draft))
+        .route("/changestatus", post(change_status))
+        .route("/updatesupplyer", post(update_supplier))
+        .route("/updatesupplyerprice", post(update_supplier_price))
+        .route("/approveprice", post(update_summ_price))
+        .route("/acceptprice", post(accept_summ_price))
+        .route("/createcontract", post(create_contract))
+        .route("/createsuppcontract", post(create_supp_contract))
+        .route("/createsupppayments", post(create_supp_payments))
+        .route("/createsuppdelivery", post(create_supp_delivery))
+        .route("/createpostprocesses", post(create_post_processes))
         
         .layer(CorsLayer::permissive())
         .with_state(state);
 
-    let listener = tokio::net::TcpListener::bind("localhost:8080").await.unwrap();
+    //let listener = tokio::net::TcpListener::bind("localhost:8080").await.unwrap();
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
